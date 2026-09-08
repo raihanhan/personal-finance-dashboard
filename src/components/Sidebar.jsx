@@ -10,6 +10,7 @@ import {
   Settings,
   Target,
   PieChart,
+  Tags,
 } from "lucide-react";
 
 import { NavLink } from "react-router-dom";
@@ -31,15 +32,12 @@ const menuItems = [
     path: "/transactions",
   },
   {
-    name: "Cards",
-    icon: CreditCard,
-    path: "/cards",
-  },
-  {
-    name: "Investments",
-    icon: TrendingUp,
-    path: "/investments",
-  },
+  name: "Categories",
+
+  path: "/categories",
+
+  icon: Tags,
+},
   {
     name: "Budgets",
     icon: PieChart,
@@ -49,6 +47,16 @@ const menuItems = [
     name: "Goals",
     icon: Target,
     path: "/goals",
+  },
+    {
+    name: "Cards",
+    icon: CreditCard,
+    path: "/cards",
+  },
+  {
+    name: "Investments",
+    icon: TrendingUp,
+    path: "/investments",
   },
 ];
 

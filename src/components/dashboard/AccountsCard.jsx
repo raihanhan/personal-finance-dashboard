@@ -6,45 +6,8 @@ import {
   Plus,
   ChevronRight,
 } from "lucide-react";
-
-const accounts = [
-  {
-    id: 1,
-    name: "BCA Savings",
-    type: "Bank Account",
-    balance: 12500000,
-    icon: Building2,
-    color: "text-blue-400",
-    bg: "bg-blue-500/10",
-  },
-  {
-    id: 2,
-    name: "GoPay",
-    type: "E-Wallet",
-    balance: 750000,
-    icon: Smartphone,
-    color: "text-emerald-400",
-    bg: "bg-emerald-500/10",
-  },
-  {
-    id: 3,
-    name: "Cash",
-    type: "Cash",
-    balance: 350000,
-    icon: Wallet,
-    color: "text-orange-400",
-    bg: "bg-orange-500/10",
-  },
-  {
-    id: 4,
-    name: "BCA Credit Card",
-    type: "Credit Card",
-    balance: 10900000,
-    icon: CreditCard,
-    color: "text-purple-400",
-    bg: "bg-purple-500/10",
-  },
-];
+import { useAccounts } from "../../hooks/useAccounts";
+import { AccountSummarySkeleton } from "../ui/Skeletons";
 
 const formatCurrency = (amount) => {
   return new Intl.NumberFormat("id-ID", {
@@ -55,6 +18,15 @@ const formatCurrency = (amount) => {
 };
 
 function AccountsCard() {
+  const { accounts, loading } = useAccounts();
+
+  const accountStyles = [
+    [Building2, "text-blue-400", "bg-blue-500/10"],
+    [Smartphone, "text-emerald-400", "bg-emerald-500/10"],
+    [Wallet, "text-orange-400", "bg-orange-500/10"],
+    [CreditCard, "text-purple-400", "bg-purple-500/10"],
+  ];
+
   return (
     <div className="rounded-2xl border border-slate-800 bg-[#111927]">
 
@@ -88,9 +60,14 @@ function AccountsCard() {
 
       <div className="divide-y divide-slate-800">
 
-        {accounts.map((account) => {
+        {loading ? (
+          <AccountSummarySkeleton />
+        ) : accounts.length === 0 ? (
+          <p className="p-5 text-sm text-slate-500">No accounts yet.</p>
+        ) : accounts.map((account, index) => {
 
-          const Icon = account.icon;
+          const [Icon, color, bg] =
+            accountStyles[index % accountStyles.length];
 
           return (
             <button
@@ -101,12 +78,12 @@ function AccountsCard() {
               <div className="flex items-center gap-3">
 
                 <div
-                  className={`flex h-10 w-10 items-center justify-center rounded-xl ${account.bg}`}
+                    className={`flex h-10 w-10 items-center justify-center rounded-xl ${bg}`}
                 >
 
                   <Icon
                     size={18}
-                    className={account.color}
+                    className={color}
                   />
 
                 </div>

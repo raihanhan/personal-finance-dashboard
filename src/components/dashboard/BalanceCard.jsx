@@ -5,10 +5,33 @@ import {
   Plus,
   Wallet,
 } from "lucide-react";
+import { useAccounts } from "../../hooks/useAccounts";
+import { useTransactions } from "../../hooks/useTransactions";
+
+const formatCurrency = (amount) =>
+  new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(amount);
 
 function BalanceCard({
   onAddTransaction,
 }) {
+  const { accounts } = useAccounts();
+  const { transactions } = useTransactions();
+  const totalBalance = accounts.reduce(
+    (total, account) => total + Number(account.balance || 0),
+    0
+  );
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const monthlyIncome = transactions
+    .filter((transaction) => transaction.type === "income" && transaction.transaction_date?.startsWith(currentMonth))
+    .reduce((total, transaction) => total + Number(transaction.amount || 0), 0);
+  const monthlyExpense = transactions
+    .filter((transaction) => transaction.type === "expense" && transaction.transaction_date?.startsWith(currentMonth))
+    .reduce((total, transaction) => total + Number(transaction.amount || 0), 0);
+
   return (
     <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-[#111927] p-6">
 
@@ -29,7 +52,7 @@ function BalanceCard({
             </div>
 
             <h2 className="mt-4 text-4xl font-bold tracking-tight text-white">
-              Rp 24.500.000
+              {formatCurrency(totalBalance)}
             </h2>
 
             <div className="mt-3 flex items-center gap-2">
@@ -37,11 +60,11 @@ function BalanceCard({
               <div className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-400">
                 <ArrowUpRight size={14} />
 
-                12.4%
+                {formatCurrency(monthlyIncome - monthlyExpense)}
               </div>
 
               <span className="text-sm text-slate-500">
-                +Rp 2.700.000 bulan ini
+                Net bulan ini
               </span>
 
             </div>
@@ -71,7 +94,7 @@ function BalanceCard({
             </div>
 
             <p className="mt-3 text-lg font-semibold text-white">
-              Rp 8.500.000
+              {formatCurrency(monthlyIncome)}
             </p>
 
           </div>
@@ -90,7 +113,7 @@ function BalanceCard({
             </div>
 
             <p className="mt-3 text-lg font-semibold text-white">
-              Rp 4.200.000
+              {formatCurrency(monthlyExpense)}
             </p>
 
           </div>
@@ -110,7 +133,7 @@ function BalanceCard({
 
 
           <button
-            onClick={() => onAddTransaction("income")}
+            onClick={() => onAddTransaction?.("income")}
             className="flex items-center gap-2 rounded-xl border border-slate-700 bg-[#0d1420] px-4 py-3 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:text-white"
           >
             <Plus size={16} />
@@ -120,7 +143,7 @@ function BalanceCard({
 
 
           <button
-            onClick={() => onAddTransaction("expense")}
+            onClick={() => onAddTransaction?.("expense")}
             className="flex items-center gap-2 rounded-xl border border-slate-700 bg-[#0d1420] px-4 py-3 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:text-white"
           >
             <Plus size={16} />

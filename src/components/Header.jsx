@@ -5,8 +5,48 @@ import {
   Sun,
   ChevronDown,
 } from "lucide-react";
+import {
+  LogOut,
+} from "lucide-react";
+
+import {
+  useAuth,
+} from "../hooks/useAuth";
+import { useAccounts } from "../hooks/useAccounts";
+
+import {
+  useNavigate,
+} from "react-router-dom";
+
 
 function Header() {
+  const { user, signOut } = useAuth();
+  const { accounts } = useAccounts();
+  const navigate = useNavigate();
+  const totalBalance = accounts.reduce(
+    (total, account) => total + Number(account.balance || 0),
+    0
+  );
+
+  const fullName =
+    user?.user_metadata?.full_name ||
+    user?.email ||
+    "User";
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await signOut();
+
+      if (error) {
+        throw error;
+      }
+
+      navigate("/login");
+    }
+    catch (error) {
+      console.error("Failed to log out:", error);
+    }
+  };
   return (
     <header className="flex h-20 items-center justify-between border-b border-slate-800 px-8">
 
@@ -38,7 +78,11 @@ function Header() {
             </p>
 
             <p className="text-sm font-medium text-white">
-              Rp 24.500.000
+              {new Intl.NumberFormat("id-ID", {
+                style: "currency",
+                currency: "IDR",
+                maximumFractionDigits: 0,
+              }).format(totalBalance)}
             </p>
 
           </div>
@@ -62,21 +106,38 @@ function Header() {
           <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" />
 
         </button>
+        <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-400 transition hover:bg-red-500/10 hover:text-red-400"
+          >
+            <LogOut size={18} />
+
+            <span className="hidden md:inline">
+              Logout
+            </span>
+          </button>
 
         <div className="hidden items-center gap-3 lg:flex">
 
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-linear-to-br from-blue-500 to-purple-500 font-semibold text-white">
-            H
+            {fullName
+              .split(" ")
+              .map((name) => name[0])
+              .join("")
+              .toUpperCase()}
           </div>
 
           <div>
 
             <p className="text-sm font-medium text-white">
-              Habib
-            </p>
 
+              {fullName}
+
+            </p>
             <p className="text-xs text-slate-500">
-              Personal Account
+
+              {user?.email}
+
             </p>
 
           </div>

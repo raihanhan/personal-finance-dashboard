@@ -5,29 +5,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
-
-const data = [
-  {
-    name: "Food",
-    value: 1200000,
-  },
-  {
-    name: "Shopping",
-    value: 900000,
-  },
-  {
-    name: "Transport",
-    value: 600000,
-  },
-  {
-    name: "Entertainment",
-    value: 500000,
-  },
-  {
-    name: "Others",
-    value: 1000000,
-  },
-];
+import { useTransactions } from "../../hooks/useTransactions";
 
 const COLORS = [
   "#3b82f6",
@@ -46,6 +24,16 @@ const formatCurrency = (value) => {
 };
 
 function SpendingChart() {
+  const { transactions } = useTransactions();
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const spendingByCategory = transactions
+    .filter((transaction) => transaction.type === "expense" && transaction.transaction_date?.startsWith(currentMonth))
+    .reduce((totals, transaction) => {
+      const name = transaction.categories?.name || "Uncategorized";
+      totals[name] = (totals[name] || 0) + Number(transaction.amount || 0);
+      return totals;
+    }, {});
+  const data = Object.entries(spendingByCategory).map(([name, value]) => ({ name, value }));
   const totalExpense = data.reduce(
     (total, item) => total + item.value,
     0
@@ -121,7 +109,7 @@ function SpendingChart() {
           </span>
 
           <span className="mt-1 text-lg font-bold text-white">
-            Rp {(totalExpense / 1000000).toFixed(1)}M
+            {formatCurrency(totalExpense)}
           </span>
 
         </div>

@@ -8,45 +8,30 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-
-const data = [
-  {
-    month: "Jan",
-    income: 7500000,
-    expense: 4200000,
-  },
-  {
-    month: "Feb",
-    income: 8200000,
-    expense: 4600000,
-  },
-  {
-    month: "Mar",
-    income: 7800000,
-    expense: 3900000,
-  },
-  {
-    month: "Apr",
-    income: 9500000,
-    expense: 5200000,
-  },
-  {
-    month: "May",
-    income: 8700000,
-    expense: 4500000,
-  },
-  {
-    month: "Jun",
-    income: 10500000,
-    expense: 5800000,
-  },
-];
+import { useTransactions } from "../../hooks/useTransactions";
 
 const formatCurrency = (value) => {
   return `${(value / 1000000).toFixed(1)}M`;
 };
 
 function IncomeExpenseChart() {
+  const { transactions } = useTransactions();
+  const data = Array.from({ length: 6 }, (_, index) => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - (5 - index));
+    const month = date.toISOString().slice(0, 7);
+
+    return {
+      month: date.toLocaleDateString("en-US", { month: "short" }),
+      income: transactions
+        .filter((transaction) => transaction.type === "income" && transaction.transaction_date?.startsWith(month))
+        .reduce((total, transaction) => total + Number(transaction.amount || 0), 0),
+      expense: transactions
+        .filter((transaction) => transaction.type === "expense" && transaction.transaction_date?.startsWith(month))
+        .reduce((total, transaction) => total + Number(transaction.amount || 0), 0),
+    };
+  });
+
   return (
     <div className="rounded-2xl border border-slate-800 bg-[#111927] p-6">
 
@@ -76,7 +61,7 @@ function IncomeExpenseChart() {
       </div>
 
 
-      <div className="mt-8 h-[320px]">
+      <div className="mt-8 h-80">
 
         <ResponsiveContainer
           width="100%"

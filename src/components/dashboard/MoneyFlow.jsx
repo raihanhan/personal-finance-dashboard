@@ -4,43 +4,35 @@ import {
   PiggyBank,
   Landmark,
 } from "lucide-react";
+import { useTransactions } from "../../hooks/useTransactions";
 
-const moneyData = [
-  {
-    title: "Income",
-    amount: "Rp 8.500.000",
-    change: "+12.5%",
-    icon: TrendingUp,
-    iconColor: "text-emerald-400",
-    bgColor: "bg-emerald-500/10",
-  },
-  {
-    title: "Expenses",
-    amount: "Rp 4.200.000",
-    change: "-8.2%",
-    icon: TrendingDown,
-    iconColor: "text-red-400",
-    bgColor: "bg-red-500/10",
-  },
-  {
-    title: "Savings",
-    amount: "Rp 2.500.000",
-    change: "+15.4%",
-    icon: PiggyBank,
-    iconColor: "text-blue-400",
-    bgColor: "bg-blue-500/10",
-  },
-  {
-    title: "Investment",
-    amount: "Rp 1.000.000",
-    change: "+5.8%",
-    icon: Landmark,
-    iconColor: "text-purple-400",
-    bgColor: "bg-purple-500/10",
-  },
-];
+const formatCurrency = (amount) =>
+  new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(amount);
 
 function MoneyFlow() {
+  const { transactions } = useTransactions();
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const monthly = transactions.filter((transaction) =>
+    transaction.transaction_date?.startsWith(currentMonth)
+  );
+  const income = monthly
+    .filter((transaction) => transaction.type === "income")
+    .reduce((total, transaction) => total + Number(transaction.amount || 0), 0);
+  const expenses = monthly
+    .filter((transaction) => transaction.type === "expense")
+    .reduce((total, transaction) => total + Number(transaction.amount || 0), 0);
+  const moneyData = [
+    { title: "Income", amount: income, icon: TrendingUp, iconColor: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+    { title: "Expenses", amount: expenses, icon: TrendingDown, iconColor: "text-red-400", bgColor: "bg-red-500/10" },
+    { title: "Savings", amount: income - expenses, icon: PiggyBank, iconColor: "text-blue-400", bgColor: "bg-blue-500/10" },
+    { title: "Investment", amount: monthly
+      .filter((transaction) => transaction.categories?.name?.toLowerCase().includes("invest"))
+      .reduce((total, transaction) => total + Number(transaction.amount || 0), 0), icon: Landmark, iconColor: "text-purple-400", bgColor: "bg-purple-500/10" },
+  ];
   return (
     <div className="rounded-2xl border border-slate-800 bg-[#111927] p-6">
 
@@ -88,7 +80,7 @@ function MoneyFlow() {
                 </div>
 
                 <span className="text-xs text-slate-500">
-                  {item.change}
+                  {formatCurrency(item.amount)}
                 </span>
 
               </div>
@@ -99,7 +91,7 @@ function MoneyFlow() {
               </p>
 
               <p className="mt-1 text-lg font-semibold text-white">
-                {item.amount}
+                {formatCurrency(item.amount)}
               </p>
 
             </div>

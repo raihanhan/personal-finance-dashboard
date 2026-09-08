@@ -1,49 +1,45 @@
-import { useState } from "react";
-
 import {
   Plus,
   ArrowDownLeft,
   ArrowUpRight,
+  ArrowLeftRight,
   Search,
   Filter,
-  MoreHorizontal,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 
 import Modal from "../components/ui/Modal";
+import ConfirmationModal from "../components/ui/ConfirmationModal";
 import TransactionForm from "../components/forms/TransactionForm";
+import {
+  useState,
+  useEffect,
+} from "react";
+import {
+  getTransactions,
+  createTransaction,
+  updateTransaction,
+  deleteTransaction,
+} from "../services/transactionService";
 
+import {
+  getAccounts,
+  adjustAccountBalance,
+} from "../services/accountService";
 
-const initialTransactions = [
-  {
-    id: 1,
-    type: "income",
-    amount: 8500000,
-    category: "Salary",
-    account: "BCA Savings",
-    description: "Monthly Salary",
-    date: "2026-09-08",
-  },
+import {
+  getCategories,
+} from "../services/categoryService";
 
-  {
-    id: 2,
-    type: "expense",
-    amount: 50000,
-    category: "Food & Drinks",
-    account: "BCA Savings",
-    description: "Starbucks",
-    date: "2026-09-08",
-  },
-
-  {
-    id: 3,
-    type: "expense",
-    amount: 250000,
-    category: "Shopping",
-    account: "BCA Savings",
-    description: "Tokopedia",
-    date: "2026-09-07",
-  },
-];
+import {
+  useAuth,
+} from "../hooks/useAuth";
+import { useToast } from "../hooks/useToast";
+import { getUserFriendlyError } from "../utils/errors";
+import { TransactionListSkeleton } from "../components/ui/Skeletons";
+import EmptyState from "../components/ui/EmptyState";
+import ErrorState from "../components/ui/ErrorState";
 
 
 const formatCurrency = (amount) => {
@@ -57,77 +53,387 @@ const formatCurrency = (amount) => {
 
 function Transactions() {
 
-  const [transactions, setTransactions] =
-    useState(initialTransactions);
+const [transactions, setTransactions] =
+  useState([]);
 
-  const [isModalOpen, setIsModalOpen] =
-    useState(false);
+const [accounts, setAccounts] =
+  useState([]);
 
-  const [searchTerm, setSearchTerm] =
-    useState("");
+const [categories, setCategories] =
+  useState([]);
 
+const [loading, setLoading] =
+  useState(true);
 
-  const handleAddTransaction = (transaction) => {
+const [errorMessage, setErrorMessage] =
+  useState("");
 
-    setTransactions([
-      transaction,
-      ...transactions,
-    ]);
+const [isModalOpen, setIsModalOpen] =
+  useState(false);
 
-    setIsModalOpen(false);
+const [selectedTransaction, setSelectedTransaction] =
+  useState(null);
 
-  };
+const [deleteTarget, setDeleteTarget] =
+  useState(null);
 
+const [deleteLoading, setDeleteLoading] =
+  useState(false);
 
-  const totalIncome = transactions
-    .filter(
-      (transaction) =>
-        transaction.type === "income"
-    )
-    .reduce(
-      (total, transaction) =>
-        total + transaction.amount,
-      0
-    );
+const [searchTerm, setSearchTerm] =
+  useState("");
 
 
-  const totalExpense = transactions
-    .filter(
-      (transaction) =>
-        transaction.type === "expense"
-    )
-    .reduce(
-      (total, transaction) =>
-        total + transaction.amount,
-      0
-    );
+  const { user } = useAuth();
+  const { showSuccess, showError, showWarning } = useToast();
 
 
-  const filteredTransactions =
-    transactions.filter((transaction) => {
+const handleAddTransaction = async (
+  transaction
+) => {
 
-      const search =
-        searchTerm.toLowerCase();
+  if (!user) return;
 
-      return (
-        transaction.description
-          .toLowerCase()
-          .includes(search) ||
 
-        transaction.category
-          .toLowerCase()
-          .includes(search) ||
+  const {
+    data,
+    error,
+  } =
+    await createTransaction({
 
-        transaction.account
-          .toLowerCase()
-          .includes(search)
-      );
+      ...transaction,
+
+      user_id: user.id,
 
     });
 
 
-  return (
+  if (error) {
 
+    showError(getUserFriendlyError(error, "Failed to save transaction."));
+
+    return;
+
+  }
+
+ const amount = Math.abs(Number(transaction.amount));
+
+ const balanceChange =
+    transaction.type === "income"
+
+   ? amount
+
+   : -amount;
+
+
+  const {
+    error: balanceError,
+  } =
+    await adjustAccountBalance(
+
+      transaction.account_id,
+
+      balanceChange
+
+    );
+
+
+  if (balanceError) {
+
+    showWarning(getUserFriendlyError(balanceError, "Transaction saved, but the account balance could not be updated."));
+
+  }
+
+  setTransactions((current) => [
+
+    data,
+
+    ...current,
+
+  ]);
+
+
+  setIsModalOpen(false);
+  showSuccess("Transaction added successfully.");
+
+};
+
+const getSignedAmount = (transaction) => {
+  const amount = Math.abs(Number(transaction.amount));
+
+  return transaction.type === "income"
+    ? amount
+    : -amount;
+};
+
+const handleUpdateTransaction = async (
+  transactionData
+) => {
+  if (!selectedTransaction) return;
+
+  const { data, error } = await updateTransaction(
+    selectedTransaction.id,
+    transactionData
+  );
+
+  if (error) {
+    showError(getUserFriendlyError(error, "Failed to update transaction."));
+    return;
+  }
+
+  const oldSignedAmount = getSignedAmount(selectedTransaction);
+  const newSignedAmount = getSignedAmount(transactionData);
+  let balanceError;
+
+  if (selectedTransaction.account_id === transactionData.account_id) {
+    const result = await adjustAccountBalance(
+      transactionData.account_id,
+      newSignedAmount - oldSignedAmount
+    );
+    balanceError = result.error;
+  } else {
+    const oldAccountResult = await adjustAccountBalance(
+      selectedTransaction.account_id,
+      -oldSignedAmount
+    );
+    const newAccountResult = await adjustAccountBalance(
+      transactionData.account_id,
+      newSignedAmount
+    );
+    balanceError = oldAccountResult.error || newAccountResult.error;
+  }
+
+  if (balanceError) {
+    showWarning(getUserFriendlyError(balanceError, "Transaction updated, but the account balance could not be updated."));
+  }
+
+  setTransactions((current) =>
+    current.map((item) => item.id === data.id ? data : item)
+  );
+  setSelectedTransaction(null);
+  setIsModalOpen(false);
+  showSuccess("Transaction updated successfully.");
+};
+
+const handleEditTransaction = (transaction) => {
+  setSelectedTransaction(transaction);
+  setIsModalOpen(true);
+};
+const handleDeleteTransaction = async (
+  transaction
+) => {
+  const amount = Math.abs(Number(transaction.amount));
+
+  const balanceChange =
+    transaction.type === "income"
+
+      ? -amount
+
+      : amount;
+
+
+  const {
+    error: balanceError,
+  } =
+    await adjustAccountBalance(
+
+      transaction.account_id,
+
+      balanceChange
+
+    );
+
+
+  if (balanceError) {
+
+    showError("Failed to update account balance.");
+
+    return;
+
+  }
+
+
+  const { error } =
+    await deleteTransaction(
+      transaction.id
+    );
+
+
+  if (error) {
+
+    showError(getUserFriendlyError(error, "Failed to delete transaction."));
+
+    return;
+
+  }
+
+
+  setTransactions((current) =>
+    current.filter(
+      (item) =>
+        item.id !== transaction.id
+    )
+  );
+  showSuccess("Transaction deleted successfully.");
+
+};
+
+const requestDeleteTransaction = (transaction) => {
+  setDeleteTarget(transaction);
+};
+
+const confirmDeleteTransaction = async () => {
+  if (!deleteTarget) return;
+
+  setDeleteLoading(true);
+  await handleDeleteTransaction(deleteTarget);
+  setDeleteLoading(false);
+  setDeleteTarget(null);
+};
+
+  const loadData = async () => {
+
+  setLoading(true);
+
+  setErrorMessage("");
+
+
+  const [
+    transactionsResult,
+    accountsResult,
+    categoriesResult,
+  ] =
+    await Promise.all([
+
+      getTransactions(),
+
+      getAccounts(),
+
+      getCategories(),
+
+    ]);
+
+
+  if (transactionsResult.error) {
+
+    setErrorMessage(getUserFriendlyError(transactionsResult.error, "Unable to load transactions."));
+
+  }
+
+
+  if (accountsResult.error) {
+
+    setErrorMessage(getUserFriendlyError(accountsResult.error, "Unable to load accounts."));
+
+  }
+
+
+  if (categoriesResult.error) {
+
+    setErrorMessage(getUserFriendlyError(categoriesResult.error, "Unable to load categories."));
+
+  }
+
+
+  setTransactions(
+    transactionsResult.data || []
+  );
+
+
+  setAccounts(
+    accountsResult.data || []
+  );
+
+
+  setCategories(
+    categoriesResult.data || []
+  );
+
+
+  setLoading(false);
+
+};
+
+useEffect(() => {
+
+  if (user) {
+
+    void Promise.resolve().then(loadData);
+
+  }
+
+}, [user]);
+
+  const totalIncome = transactions
+  .filter(
+    (transaction) =>
+      transaction.type === "income"
+  )
+  .reduce(
+    (total, transaction) =>
+      total + Number(transaction.amount),
+    0
+  );
+
+
+  const totalExpense = transactions
+  .filter(
+    (transaction) =>
+      transaction.type === "expense"
+  )
+  .reduce(
+    (total, transaction) =>
+      total + Number(transaction.amount),
+    0
+  );
+
+
+  const filteredTransactions =
+  transactions.filter(
+    (transaction) => {
+
+      const search =
+        searchTerm.toLowerCase();
+
+
+      const description =
+        (
+          transaction.description || ""
+        ).toLowerCase();
+
+
+      const category =
+        (
+          transaction.categories?.name || ""
+        ).toLowerCase();
+
+
+      const account =
+        (
+          transaction.accounts?.name || ""
+        ).toLowerCase();
+
+
+      return (
+
+        description.includes(search) ||
+
+        category.includes(search) ||
+
+        account.includes(search)
+
+      );
+
+    }
+  );
+
+  if (loading) {
+
+    return <TransactionListSkeleton />;
+
+}
+
+  return (
     <div>
 
       {/* HEADER */}
@@ -146,7 +452,12 @@ function Transactions() {
 
         </div>
 
-
+          {errorMessage && (
+            <ErrorState
+              message={errorMessage}
+              onRetry={() => void loadData()}
+            />
+          )}
         <button
           onClick={() => setIsModalOpen(true)}
           className="flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-3 text-sm font-medium text-white transition hover:bg-blue-400"
@@ -423,14 +734,16 @@ function Transactions() {
 
                     <td className="px-6 py-4 text-sm text-slate-400">
 
-                      {transaction.category}
+                      {transaction.categories?.name ||
+                        "Uncategorized"}
 
                     </td>
 
 
                     <td className="px-6 py-4 text-sm text-slate-400">
 
-                      {transaction.account}
+                      {transaction.accounts?.name ||
+                      "Unknown Account"}
 
                     </td>
 
@@ -438,7 +751,7 @@ function Transactions() {
                     <td className="px-6 py-4 text-sm text-slate-400">
 
                       {new Date(
-                        transaction.date
+                        transaction.transaction_date
                       ).toLocaleDateString("id-ID")}
 
                     </td>
@@ -457,7 +770,7 @@ function Transactions() {
                         : "-"}
 
                       {formatCurrency(
-                        transaction.amount
+                          Number(transaction.amount)
                       )}
 
                     </td>
@@ -465,9 +778,25 @@ function Transactions() {
 
                     <td className="px-6 py-4">
 
-                      <button className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-800 hover:text-white">
+                      <button
+                        onClick={() => handleEditTransaction(transaction)}
+                        className="rounded-lg p-2 text-slate-500 transition hover:bg-blue-500/10 hover:text-blue-400"
+                      >
 
-                        <MoreHorizontal size={18} />
+                        <Pencil size={17} />
+
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          requestDeleteTransaction(
+                            transaction
+                          )
+                        }
+                        className="rounded-lg p-2 text-slate-500 transition hover:bg-red-500/10 hover:text-red-400"
+                      >
+
+                        <Trash2 size={17} />
 
                       </button>
 
@@ -488,14 +817,17 @@ function Transactions() {
         {/* EMPTY STATE */}
 
         {filteredTransactions.length === 0 && (
-
-          <div className="p-10 text-center">
-
-            <p className="text-slate-500">
-              No transactions found.
-            </p>
-
-          </div>
+          <EmptyState
+            icon={ArrowLeftRight}
+            title={transactions.length === 0 ? "No transactions yet." : "No matching transactions."}
+            description={
+              transactions.length === 0
+                ? "Add your first transaction to start tracking your finances."
+                : "Try a different search term to find a transaction."
+            }
+            actionText={transactions.length === 0 ? "Add Transaction" : undefined}
+            onAction={transactions.length === 0 ? () => setIsModalOpen(true) : undefined}
+          />
 
         )}
 
@@ -505,17 +837,45 @@ function Transactions() {
       {/* MODAL */}
 
       <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Add Transaction"
-      >
+  isOpen={isModalOpen}
+  onClose={() => {
+    setIsModalOpen(false);
+    setSelectedTransaction(null);
+  }}
+  title={selectedTransaction ? "Edit Transaction" : "Add Transaction"}
+>
 
-        <TransactionForm
-          onSubmit={handleAddTransaction}
-          onCancel={() => setIsModalOpen(false)}
-        />
+  <TransactionForm
 
-      </Modal>
+    transaction={selectedTransaction}
+
+    onSubmit={
+      selectedTransaction
+        ? handleUpdateTransaction
+        : handleAddTransaction
+    }
+
+    onCancel={() => {
+      setIsModalOpen(false);
+      setSelectedTransaction(null);
+    }}
+
+    accounts={accounts}
+
+    categories={categories}
+
+  />
+
+</Modal>
+
+      <ConfirmationModal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDeleteTransaction}
+        title="Delete Transaction?"
+        description="This transaction will be permanently deleted and the account balance will be adjusted."
+        loading={deleteLoading}
+      />
 
     </div>
 

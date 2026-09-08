@@ -1,79 +1,176 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+} from "react-router-dom";
+
+import {
+  AuthProvider,
+} from "./contexts/AuthContext";
+
+import { ToastProvider } from "./contexts/ToastContext";
+import ToastViewport from "./components/ui/ToastViewport";
+import ErrorBoundary from "./components/errors/ErrorBoundary";
+
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 import DashboardLayout from "./layouts/DashboardLayout";
 
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import Accounts from "./pages/Accounts";
+import Categories from "./pages/Categories";
 import Budgets from "./pages/Budgets";
 import Analytics from "./pages/Analytics";
 import Goals from "./pages/Goals";
+
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+
 import PlaceholderPage from "./pages/PlaceholderPage";
 
-function App() {
-  return (
-    <BrowserRouter>
 
-      <DashboardLayout>
+function App() {
+
+  return (
+
+    <ErrorBoundary>
+      <BrowserRouter>
+
+      <AuthProvider>
+
+        <ToastProvider>
 
         <Routes>
 
-          <Route
-            path="/"
-            element={<Dashboard />}
-          />
+
+          {/* PUBLIC ROUTES */}
 
           <Route
-            path="/transactions"
-            element={<Transactions />}
+            path="/login"
+            element={<Login />}
           />
 
-          <Route
-            path="/accounts"
-            element={<Accounts />}
-          />
 
           <Route
-            path="/budgets"
-            element={<Budgets />}
+            path="/register"
+            element={<Register />}
           />
 
-          <Route
-            path="/analytics"
-            element={<Analytics />}
-          />
+
+          {/* PROTECTED ROUTES */}
 
           <Route
-            path="/goals"
-            element={<Goals />}
-          />
+            path="/*"
+            element={
 
-          <Route
-            path="/cards"
-            element={<PlaceholderPage title="Cards" />}
-          />
+              <ProtectedRoute>
 
-          <Route
-            path="/investments"
-            element={<PlaceholderPage title="Investments" />}
-          />
+                <DashboardLayout>
 
-          <Route
-            path="/activity"
-            element={<PlaceholderPage title="Activity" />}
-          />
+                  <Routes>
 
-          <Route
-            path="/settings"
-            element={<PlaceholderPage title="Settings" />}
+                    <Route
+                      path="/"
+                      element={<Dashboard />}
+                    />
+
+
+                    <Route
+                      path="/transactions"
+                      element={<Transactions />}
+                    />
+
+
+                    <Route
+                      path="/accounts"
+                      element={<Accounts />}
+                    />
+
+                    <Route
+                      path="/categories"
+                      element={<Categories />}
+                    />
+
+                    <Route
+                      path="/budgets"
+                      element={<Budgets />}
+                    />
+
+
+                    <Route
+                      path="/analytics"
+                      element={<Analytics />}
+                    />
+
+
+                    <Route
+                      path="/goals"
+                      element={<Goals />}
+                    />
+
+
+                    <Route
+                      path="/cards"
+                      element={
+                        <PlaceholderPage
+                          title="Cards"
+                        />
+                      }
+                    />
+                    
+                    <Route
+                      path="/investments"
+                      element={
+                        <PlaceholderPage
+                          title="Investments"
+                        />
+                      }
+                    />
+
+
+                    <Route
+                      path="/activity"
+                      element={
+                        <PlaceholderPage
+                          title="Activity"
+                        />
+                      }
+                    />
+
+
+                    <Route
+                      path="/settings"
+                      element={
+                        <PlaceholderPage
+                          title="Settings"
+                        />
+                      }
+                    />
+
+                  </Routes>
+
+                </DashboardLayout>
+
+              </ProtectedRoute>
+
+            }
           />
 
         </Routes>
 
-      </DashboardLayout>
+        <ToastViewport />
 
-    </BrowserRouter>
+        </ToastProvider>
+
+      </AuthProvider>
+
+      </BrowserRouter>
+    </ErrorBoundary>
+
   );
+
 }
+
 
 export default App;
