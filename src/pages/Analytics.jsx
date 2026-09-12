@@ -53,6 +53,7 @@ import {
 
 import ErrorState from "../components/ui/ErrorState";
 import { getUserFriendlyError } from "../utils/errors";
+import { calculateSummary, calculateSavingsRate } from "../utils/calculations";
 
 
 function Analytics() {
@@ -251,91 +252,10 @@ function Analytics() {
 
   const financialSummary =
     useMemo(() => {
-
-
-      let income = 0;
-
-
-      let expense = 0;
-
-
-      filteredTransactions.forEach(
-
-        (
-          transaction
-        ) => {
-
-
-          const amount =
-            Number(
-              transaction.amount
-            );
-
-
-          if (
-
-            transaction.type ===
-            "income"
-
-          ) {
-
-            income +=
-              amount;
-
-          }
-
-
-          if (
-
-            transaction.type ===
-            "expense"
-
-          ) {
-
-            expense +=
-              amount;
-
-          }
-
-
-        }
-
-      );
-
-
-      const balance =
-
-        income -
-        expense;
-
-
-      const savingsRate =
-
-        income > 0
-
-          ? (
-              balance /
-              income
-            ) * 100
-
-          : 0;
-
-
-      return {
-
-        income,
-
-        expense,
-
-        balance,
-
-        savingsRate,
-
-      };
-
-
+      const { income, expense, balance } = calculateSummary(filteredTransactions);
+      const savingsRate = calculateSavingsRate(income, expense);
+      return { income, expense, balance, savingsRate };
     }, [
-
       filteredTransactions,
 
     ]);

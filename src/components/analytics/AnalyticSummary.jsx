@@ -10,6 +10,8 @@ import {
 
 } from "lucide-react";
 
+import { formatCurrency } from "../../utils/currency";
+
 
 function AnalyticsSummary({
 
@@ -22,29 +24,6 @@ function AnalyticsSummary({
   savingsRate,
 
 }) {
-
-
-  const formatCurrency = (
-    value
-  ) => {
-
-    return new Intl.NumberFormat(
-
-      "id-ID",
-
-      {
-
-        style: "currency",
-
-        currency: "IDR",
-
-        maximumFractionDigits: 0,
-
-      }
-
-    ).format(value);
-
-  };
 
 
   const items = [

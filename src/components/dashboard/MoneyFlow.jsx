@@ -5,13 +5,8 @@ import {
   Landmark,
 } from "lucide-react";
 import { useTransactions } from "../../hooks/useTransactions";
-
-const formatCurrency = (amount) =>
-  new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(amount);
+import { formatCurrency } from "../../utils/currency";
+import { calculateSummary } from "../../utils/calculations";
 
 function MoneyFlow() {
   const { transactions } = useTransactions();
@@ -19,16 +14,11 @@ function MoneyFlow() {
   const monthly = transactions.filter((transaction) =>
     transaction.transaction_date?.startsWith(currentMonth)
   );
-  const income = monthly
-    .filter((transaction) => transaction.type === "income")
-    .reduce((total, transaction) => total + Number(transaction.amount || 0), 0);
-  const expenses = monthly
-    .filter((transaction) => transaction.type === "expense")
-    .reduce((total, transaction) => total + Number(transaction.amount || 0), 0);
+  const { income, expense: expenses, balance: savings } = calculateSummary(monthly);
   const moneyData = [
     { title: "Income", amount: income, icon: TrendingUp, iconColor: "text-emerald-400", bgColor: "bg-emerald-500/10" },
     { title: "Expenses", amount: expenses, icon: TrendingDown, iconColor: "text-red-400", bgColor: "bg-red-500/10" },
-    { title: "Savings", amount: income - expenses, icon: PiggyBank, iconColor: "text-blue-400", bgColor: "bg-blue-500/10" },
+    { title: "Savings", amount: savings, icon: PiggyBank, iconColor: "text-blue-400", bgColor: "bg-blue-500/10" },
     { title: "Investment", amount: monthly
       .filter((transaction) => transaction.categories?.name?.toLowerCase().includes("invest"))
       .reduce((total, transaction) => total + Number(transaction.amount || 0), 0), icon: Landmark, iconColor: "text-purple-400", bgColor: "bg-purple-500/10" },

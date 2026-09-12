@@ -7,23 +7,15 @@ import {
 } from "lucide-react";
 import { useAccounts } from "../../hooks/useAccounts";
 import { useTransactions } from "../../hooks/useTransactions";
-
-const formatCurrency = (amount) =>
-  new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(amount);
+import { formatCurrency } from "../../utils/currency";
+import { calculateTotalBalance } from "../../utils/calculations";
 
 function BalanceCard({
   onAddTransaction,
 }) {
   const { accounts } = useAccounts();
   const { transactions } = useTransactions();
-  const totalBalance = accounts.reduce(
-    (total, account) => total + Number(account.balance || 0),
-    0
-  );
+  const totalBalance = calculateTotalBalance(accounts);
   const currentMonth = new Date().toISOString().slice(0, 7);
   const monthlyIncome = transactions
     .filter((transaction) => transaction.type === "income" && transaction.transaction_date?.startsWith(currentMonth))

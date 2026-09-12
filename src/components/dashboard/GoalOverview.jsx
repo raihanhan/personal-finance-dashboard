@@ -6,36 +6,14 @@ import {
 
 } from "lucide-react";
 
+import { formatCurrency } from "../../utils/currency";
+
 
 function GoalOverview({
 
   goals,
 
 }) {
-
-
-  const formatCurrency =
-    (value) => {
-
-
-      return new Intl.NumberFormat(
-
-        "id-ID",
-
-        {
-
-          style: "currency",
-
-          currency: "IDR",
-
-          maximumFractionDigits: 0,
-
-        }
-
-      ).format(value);
-
-
-    };
 
 
   if (

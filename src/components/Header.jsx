@@ -13,6 +13,8 @@ import {
   useAuth,
 } from "../hooks/useAuth";
 import { useAccounts } from "../hooks/useAccounts";
+import { formatCurrency } from "../utils/currency";
+import { calculateTotalBalance } from "../utils/calculations";
 
 import {
   useNavigate,
@@ -23,10 +25,7 @@ function Header() {
   const { user, signOut } = useAuth();
   const { accounts } = useAccounts();
   const navigate = useNavigate();
-  const totalBalance = accounts.reduce(
-    (total, account) => total + Number(account.balance || 0),
-    0
-  );
+  const totalBalance = calculateTotalBalance(accounts);
 
   const fullName =
     user?.user_metadata?.full_name ||
@@ -78,11 +77,7 @@ function Header() {
             </p>
 
             <p className="text-sm font-medium text-white">
-              {new Intl.NumberFormat("id-ID", {
-                style: "currency",
-                currency: "IDR",
-                maximumFractionDigits: 0,
-              }).format(totalBalance)}
+              {formatCurrency(totalBalance)}
             </p>
 
           </div>

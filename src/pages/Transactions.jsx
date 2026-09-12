@@ -37,18 +37,11 @@ import {
 } from "../hooks/useAuth";
 import { useToast } from "../hooks/useToast";
 import { getUserFriendlyError } from "../utils/errors";
+import { formatCurrency } from "../utils/currency";
+import { getSignedAmount, calculateSummary } from "../utils/calculations";
 import { TransactionListSkeleton } from "../components/ui/Skeletons";
 import EmptyState from "../components/ui/EmptyState";
 import ErrorState from "../components/ui/ErrorState";
-
-
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(amount);
-};
 
 
 function Transactions() {
@@ -80,13 +73,17 @@ const [deleteTarget, setDeleteTarget] =
 const [deleteLoading, setDeleteLoading] =
   useState(false);
 
-const [searchTerm, setSearchTerm] =
-  useState("");
+  const [editLoading, setEditLoading] =
+    useState(false);
 
+  const [searchTerm, setSearchTerm] =
+    useState("");
+
+  const [formKey, setFormKey] =
+    useState(0);
 
   const { user } = useAuth();
   const { showSuccess, showError, showWarning } = useToast();
-
 
 const handleAddTransaction = async (
   transaction
@@ -116,54 +113,32 @@ const handleAddTransaction = async (
 
   }
 
- const amount = Math.abs(Number(transaction.amount));
+  try {
+    const amount = Math.abs(Number(transaction.amount));
 
- const balanceChange =
-    transaction.type === "income"
+    const balanceChange =
+      transaction.type === "income"
+        ? amount
+        : -amount;
 
-   ? amount
-
-   : -amount;
-
-
-  const {
-    error: balanceError,
-  } =
-    await adjustAccountBalance(
-
+    const { error: balanceError } = await adjustAccountBalance(
       transaction.account_id,
-
       balanceChange
-
     );
 
+    if (balanceError) {
+      showWarning(getUserFriendlyError(balanceError, "Transaction saved, but the account balance could not be updated."));
+    }
 
-  if (balanceError) {
-
-    showWarning(getUserFriendlyError(balanceError, "Transaction saved, but the account balance could not be updated."));
-
+    setTransactions((current) => [data, ...current]);
+    setIsModalOpen(false);
+    showSuccess("Transaction added successfully.");
+  } catch {
+    setTransactions((current) => [data, ...current]);
+    setIsModalOpen(false);
+    showWarning("Transaction saved, but an error occurred updating the balance.");
   }
 
-  setTransactions((current) => [
-
-    data,
-
-    ...current,
-
-  ]);
-
-
-  setIsModalOpen(false);
-  showSuccess("Transaction added successfully.");
-
-};
-
-const getSignedAmount = (transaction) => {
-  const amount = Math.abs(Number(transaction.amount));
-
-  return transaction.type === "income"
-    ? amount
-    : -amount;
 };
 
 const handleUpdateTransaction = async (
@@ -186,21 +161,42 @@ const handleUpdateTransaction = async (
   let balanceError;
 
   if (selectedTransaction.account_id === transactionData.account_id) {
-    const result = await adjustAccountBalance(
-      transactionData.account_id,
-      newSignedAmount - oldSignedAmount
-    );
-    balanceError = result.error;
+    try {
+      const result = await adjustAccountBalance(
+        transactionData.account_id,
+        newSignedAmount - oldSignedAmount
+      );
+      balanceError = result.error;
+    } catch (err) {
+      balanceError = err;
+    }
   } else {
-    const oldAccountResult = await adjustAccountBalance(
-      selectedTransaction.account_id,
-      -oldSignedAmount
-    );
-    const newAccountResult = await adjustAccountBalance(
-      transactionData.account_id,
-      newSignedAmount
-    );
-    balanceError = oldAccountResult.error || newAccountResult.error;
+    let firstAdjusted = false;
+    try {
+      const oldResult = await adjustAccountBalance(
+        selectedTransaction.account_id,
+        -oldSignedAmount
+      );
+      if (oldResult.error) {
+        balanceError = oldResult.error;
+      } else {
+        firstAdjusted = true;
+        const newResult = await adjustAccountBalance(
+          transactionData.account_id,
+          newSignedAmount
+        );
+        balanceError = newResult.error;
+      }
+    } catch (err) {
+      balanceError = err;
+    }
+
+    if (balanceError && firstAdjusted) {
+      await adjustAccountBalance(
+        selectedTransaction.account_id,
+        oldSignedAmount
+      ).catch(() => {});
+    }
   }
 
   if (balanceError) {
@@ -217,6 +213,7 @@ const handleUpdateTransaction = async (
 
 const handleEditTransaction = (transaction) => {
   setSelectedTransaction(transaction);
+  setFormKey((prev) => prev + 1);
   setIsModalOpen(true);
 };
 const handleDeleteTransaction = async (
@@ -226,56 +223,34 @@ const handleDeleteTransaction = async (
 
   const balanceChange =
     transaction.type === "income"
-
       ? -amount
-
       : amount;
 
-
-  const {
-    error: balanceError,
-  } =
-    await adjustAccountBalance(
-
+  try {
+    const { error: balanceError } = await adjustAccountBalance(
       transaction.account_id,
-
       balanceChange
-
     );
 
+    if (balanceError) {
+      showError("Failed to update account balance.");
+      return;
+    }
 
-  if (balanceError) {
+    const { error } = await deleteTransaction(transaction.id);
 
-    showError("Failed to update account balance.");
+    if (error) {
+      showError(getUserFriendlyError(error, "Failed to delete transaction."));
+      return;
+    }
 
-    return;
-
-  }
-
-
-  const { error } =
-    await deleteTransaction(
-      transaction.id
+    setTransactions((current) =>
+      current.filter((item) => item.id !== transaction.id)
     );
-
-
-  if (error) {
-
-    showError(getUserFriendlyError(error, "Failed to delete transaction."));
-
-    return;
-
+    showSuccess("Transaction deleted successfully.");
+  } catch {
+    showError("An unexpected error occurred while deleting the transaction.");
   }
-
-
-  setTransactions((current) =>
-    current.filter(
-      (item) =>
-        item.id !== transaction.id
-    )
-  );
-  showSuccess("Transaction deleted successfully.");
-
 };
 
 const requestDeleteTransaction = (transaction) => {
@@ -364,29 +339,7 @@ useEffect(() => {
 
 }, [user]);
 
-  const totalIncome = transactions
-  .filter(
-    (transaction) =>
-      transaction.type === "income"
-  )
-  .reduce(
-    (total, transaction) =>
-      total + Number(transaction.amount),
-    0
-  );
-
-
-  const totalExpense = transactions
-  .filter(
-    (transaction) =>
-      transaction.type === "expense"
-  )
-  .reduce(
-    (total, transaction) =>
-      total + Number(transaction.amount),
-    0
-  );
-
+  const { income: totalIncome, expense: totalExpense } = calculateSummary(transactions);
 
   const filteredTransactions =
   transactions.filter(
@@ -459,7 +412,11 @@ useEffect(() => {
             />
           )}
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setSelectedTransaction(null);
+            setFormKey((prev) => prev + 1);
+            setIsModalOpen(true);
+          }}
           className="flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-3 text-sm font-medium text-white transition hover:bg-blue-400"
         >
 
@@ -780,7 +737,8 @@ useEffect(() => {
 
                       <button
                         onClick={() => handleEditTransaction(transaction)}
-                        className="rounded-lg p-2 text-slate-500 transition hover:bg-blue-500/10 hover:text-blue-400"
+                        disabled={editLoading}
+                        className="rounded-lg p-2 text-slate-500 transition hover:bg-blue-500/10 hover:text-blue-400 disabled:cursor-not-allowed disabled:opacity-40"
                       >
 
                         <Pencil size={17} />
@@ -793,7 +751,8 @@ useEffect(() => {
                             transaction
                           )
                         }
-                        className="rounded-lg p-2 text-slate-500 transition hover:bg-red-500/10 hover:text-red-400"
+                        disabled={editLoading}
+                        className="rounded-lg p-2 text-slate-500 transition hover:bg-red-500/10 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
                       >
 
                         <Trash2 size={17} />
@@ -843,27 +802,31 @@ useEffect(() => {
     setSelectedTransaction(null);
   }}
   title={selectedTransaction ? "Edit Transaction" : "Add Transaction"}
+  isBusy={editLoading}
 >
 
   <TransactionForm
-
+    key={formKey}
     transaction={selectedTransaction}
-
     onSubmit={
       selectedTransaction
-        ? handleUpdateTransaction
+        ? async (data) => {
+            setEditLoading(true);
+            try {
+              await handleUpdateTransaction(data);
+            } finally {
+              setEditLoading(false);
+            }
+          }
         : handleAddTransaction
     }
-
     onCancel={() => {
       setIsModalOpen(false);
       setSelectedTransaction(null);
     }}
-
     accounts={accounts}
-
     categories={categories}
-
+    isEditing={Boolean(selectedTransaction)}
   />
 
 </Modal>

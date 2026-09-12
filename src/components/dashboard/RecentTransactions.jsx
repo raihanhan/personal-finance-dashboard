@@ -13,31 +13,11 @@ import {
 import {
   parseLocalDate,
 } from "../../utils/date";
+import { formatCurrency } from "../../utils/currency";
 
 function RecentTransactions({
   transactions,
 }) {
-
-
-  const formatCurrency = (
-    amount
-  ) => {
-
-    return new Intl.NumberFormat(
-      "id-ID",
-      {
-
-        style: "currency",
-
-        currency: "IDR",
-
-        maximumFractionDigits: 0,
-
-      }
-
-    ).format(amount);
-
-  };
 
 
   const formatDate = (

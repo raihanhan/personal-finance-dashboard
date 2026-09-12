@@ -7,15 +7,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useAccounts } from "../../hooks/useAccounts";
+import { formatCurrency } from "../../utils/currency";
 import { AccountSummarySkeleton } from "../ui/Skeletons";
-
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(amount);
-};
 
 function AccountsCard() {
   const { accounts, loading } = useAccounts();

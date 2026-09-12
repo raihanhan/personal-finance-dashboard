@@ -10,6 +10,9 @@ import {
 
 } from "lucide-react";
 
+import { formatCurrency } from "../../utils/currency";
+import { calculateBudgetPercentage } from "../../utils/calculations";
+
 
 function BudgetCard({
 
@@ -28,23 +31,8 @@ function BudgetCard({
     Number(budget.amount);
 
 
-  const percentage =
-    amount > 0
-
-      ? Math.min(
-          (spent / amount) * 100,
-          100
-        )
-
-      : 0;
-
-
-  const actualPercentage =
-    amount > 0
-
-      ? (spent / amount) * 100
-
-      : 0;
+  const actualPercentage = calculateBudgetPercentage(spent, amount);
+  const percentage = Math.min(actualPercentage, 100);
 
 
   const remaining =
@@ -58,27 +46,6 @@ function BudgetCard({
   const isNearLimit =
     actualPercentage >= 80 &&
     !isOverBudget;
-
-
-  const formatCurrency = (
-    value
-  ) => {
-
-    return new Intl.NumberFormat(
-      "id-ID",
-      {
-
-        style: "currency",
-
-        currency: "IDR",
-
-        maximumFractionDigits: 0,
-
-      }
-
-    ).format(value);
-
-  };
 
 
   const getStatus = () => {

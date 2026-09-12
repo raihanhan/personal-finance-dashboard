@@ -10,6 +10,8 @@ import {
 
 } from "lucide-react";
 
+import { calculateSavingsRate } from "../../utils/calculations";
+
 
 function QuickInsights({
 
@@ -30,18 +32,7 @@ function QuickInsights({
   ) {
 
 
-    const savings =
-
-      income -
-      expense;
-
-
-    const savingsRate =
-
-      (
-        savings /
-        income
-      ) * 100;
+    const savingsRate = calculateSavingsRate(income, expense);
 
 
     if (

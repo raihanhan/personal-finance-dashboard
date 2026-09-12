@@ -16,6 +16,9 @@ import {
 
 } from "lucide-react";
 
+import { formatCurrency } from "../../utils/currency";
+import { calculateGoalProgress } from "../../utils/calculations";
+
 
 function GoalCard({
 
@@ -56,16 +59,7 @@ function GoalCard({
     );
 
 
-  const percentage =
-
-    targetAmount > 0
-
-      ? (
-          currentAmount /
-          targetAmount
-        ) * 100
-
-      : 0;
+  const percentage = calculateGoalProgress(currentAmount, targetAmount);
 
 
   const progress =
@@ -201,29 +195,6 @@ function GoalCard({
 
 
   }
-
-
-  const formatCurrency = (
-    value
-  ) => {
-
-    return new Intl.NumberFormat(
-
-      "id-ID",
-
-      {
-
-        style: "currency",
-
-        currency: "IDR",
-
-        maximumFractionDigits: 0,
-
-      }
-
-    ).format(value);
-
-  };
 
 
   const getStatus = () => {

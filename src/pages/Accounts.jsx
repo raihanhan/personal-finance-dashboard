@@ -45,6 +45,8 @@ import {
 } from "../hooks/useAuth";
 import { useToast } from "../hooks/useToast";
 import { getUserFriendlyError } from "../utils/errors";
+import { formatCurrency } from "../utils/currency";
+import { calculateTotalBalance } from "../utils/calculations";
 import { AccountCardSkeleton } from "../components/ui/Skeletons";
 import EmptyState from "../components/ui/EmptyState";
 import ErrorState from "../components/ui/ErrorState";
@@ -345,40 +347,7 @@ function Accounts() {
   };
 
 
-  const formatCurrency = (
-    amount
-  ) => {
-
-    return new Intl.NumberFormat(
-      "id-ID",
-      {
-
-        style: "currency",
-
-        currency: "IDR",
-
-        maximumFractionDigits: 0,
-
-      }
-
-    ).format(
-      Number(amount)
-    );
-
-  };
-
-
-  const totalBalance =
-    accounts.reduce(
-
-      (total, account) =>
-
-        total +
-        Number(account.balance),
-
-      0
-
-    );
+  const totalBalance = calculateTotalBalance(accounts);
 
 
   if (loading) {

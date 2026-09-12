@@ -67,6 +67,7 @@ import { DashboardSkeleton } from "../components/ui/Skeletons";
 import EmptyState from "../components/ui/EmptyState";
 import ErrorState from "../components/ui/ErrorState";
 import { getUserFriendlyError } from "../utils/errors";
+import { calculateTotalBalance } from "../utils/calculations";
 
 
 import {
@@ -421,40 +422,9 @@ function Dashboard() {
 
   const totalBalance =
     useMemo(() => {
-
-
-      return data.accounts.reduce(
-
-        (
-          total,
-          account
-        ) => {
-
-
-          return (
-
-            total +
-
-            Number(
-
-              account.balance || 0
-
-            )
-
-          );
-
-
-        },
-
-        0
-
-      );
-
-
+      return calculateTotalBalance(data.accounts);
     }, [
-
       data.accounts,
-
     ]);
 
 

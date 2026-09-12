@@ -6,6 +6,7 @@ import {
   Tooltip,
 } from "recharts";
 import { useTransactions } from "../../hooks/useTransactions";
+import { formatCurrency } from "../../utils/currency";
 
 const COLORS = [
   "#3b82f6",
@@ -14,14 +15,6 @@ const COLORS = [
   "#f59e0b",
   "#ef4444",
 ];
-
-const formatCurrency = (value) => {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(value);
-};
 
 function SpendingChart() {
   const { transactions } = useTransactions();
